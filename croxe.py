@@ -1,10 +1,11 @@
+from PIL import Image
 from sys import stdout
 from time import sleep
 from typing import Union
 from types import NoneType
-from base64 import b64encode, b64decode
 from argparse import ArgumentParser
 from colorama import Fore, Style, Back
+from base64 import b64encode, b64decode
 from hashlib import md5, sha1, sha224, sha256, sha384, sha512
 
 # Auther: Muhammed Alkohawaldeh
@@ -50,7 +51,7 @@ def injector(imagePath, data, is_file=False, is_encrypt=False):
         sprint(f"{Fore.RED}Somthing goes wrong while injecting !{Fore.RESET}")
         exit(1)
 
-def deinjector(imagePath, is_decrypt=False, want_hash=False) -> str:
+def deinjector(imagePath, is_decrypt=False) -> str:
     with open(f"{imagePath}", 'rb') as image:
 
         content = image.read()
@@ -90,9 +91,7 @@ def decrypt_data(data):
 
     return string_message
 
-def getHash(data, hashType):
-
-    data = data.decode('utf-8')
+def getHash(data: str, hashType: str) -> str:
 
     match hashType:
         case "sha1":
@@ -115,24 +114,32 @@ def getHash(data, hashType):
 
     return hash
 
+def backup_image(data):
+
+    image_path = f"{data}"
+    original_image = Image.open(image_path)
+    copied_image = original_image.copy()
+    copied_image.save(f"{data.split('/')[-1]}_backup.jpg")
 
 if __name__ == '__main__':
     parser = ArgumentParser(prog='python3 croxe.py', description='Photo Injection Tool', epilog="Only JPG images is allowed")
     parser.add_argument('target', help='the image that holding the data')
     parser.add_argument('-D', '--data', help='the data that will be inject in the target')
-    # parser.add_argument('-h', '--get-hash', help='get the hash for the data (Default = sha1)', default='sha1')
+    parser.add_argument('-H', '--hash-type', help='specific hash type for the data (Default = sha1)', default='sha1')
     parser.add_argument('-e', '--encrypt', help='data encrypt before injecting it (Default = false)', default=False, action='store_true')
     parser.add_argument('-d', '--decrypt', help='data decrypt after extracting it (Default = false)', default=False, action='store_true')
     parser.add_argument('-i', '--inject', help='choose to inject data instead of extracting it (Default = false)', default=False, action='store_true')
     parser.add_argument('-f', '--file', help='determine whether you are content inside a specific file (Default = false)', default=False, action='store_true')
+    parser.add_argument('-b', '--back-up', help='take a back up for the source image in Form ^ImageName_backup.jpg^ (Default = false)', default=False, action='store_true')
     args = parser.parse_args()
 
     data: str = args.data
     target: str = args.target
-    # wantHash: str = args.get_hash
+    wantHash: Union[str, None] = args.hash_type
     wantEncrypt: bool = args.encrypt
     wantDecrypt: bool = args.decrypt
     is_injecting: bool = args.inject
+    wantBackUp: bool = args.back_up
     is_file: bool = args.file
 
     if wantDecrypt and wantEncrypt:
@@ -140,6 +147,7 @@ if __name__ == '__main__':
             exit(1)
 
     if is_injecting:
+
         if wantDecrypt:
             sprint(f"{Fore.RED}You can not decrypt data that did not inject at all.{Fore.RESET}")
             exit(1)
@@ -147,6 +155,9 @@ if __name__ == '__main__':
         if type(data) == NoneType:
             sprint(f"{Fore.RED}You did not specify the data that you want to injecting it.{Fore.RESET}")
             exit(1)
+
+        if wantBackUp:
+            backup_image(target)
 
         if wantEncrypt:
             injector(target, data, is_file=is_file, is_encrypt=True)
@@ -158,9 +169,13 @@ if __name__ == '__main__':
             exit(0)
 
     elif not is_injecting:
+
         if type(data) != NoneType:
             sprint(f"{Fore.RED}You can not put data that does not need while extracting.{Fore.RESET}")
             exit(1)
+
+        if wantBackUp:
+            backup_image(target)
 
         if wantDecrypt:
             contant: str = deinjector(target, is_decrypt=True)
@@ -168,8 +183,12 @@ if __name__ == '__main__':
         else:
             contant: str = deinjector(target)
 
+        hash = getHash(contant, wantHash)
+
         sprint(f"{Style.BRIGHT}Contant ({Fore.YELLOW}Not from the main contant{Fore.RESET}):{Style.RESET_ALL}\n")
         print(f"""{contant}""")
+        sprint(f"\n{Style.BRIGHT}{Fore.WHITE}Contant Hash{Fore.RESET} ({Fore.YELLOW}Not from the main contant{Fore.RESET}):{Style.RESET_ALL}\n")
+        print(f"""{Style.BRIGHT}{Fore.BLUE}{wantHash}{Fore.RESET}: {hash}{Style.RESET_ALL}""")
         sprint(f"\n{Fore.LIGHTGREEN_EX}{Style.BRIGHT}Done!{Fore.RESET}{Style.RESET_ALL}")
         exit(0)
 
